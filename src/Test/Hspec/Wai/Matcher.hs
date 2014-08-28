@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP, TypeFamilies #-}
 module Test.Hspec.Wai.Matcher (
   ResponseMatcher(..)
 , match
@@ -15,17 +16,30 @@ import           Network.Wai.Test
 
 import           Test.Hspec.Wai.Util
 
+#if MIN_VERSION_base(4,4,0)
+import           GHC.Exts
+
+instance IsList MatchHeaders where
+  type Item MatchHeaders = Header
+  fromList xs = case xs of
+    [] -> AnyHeaders
+    _ -> foldr1 (:&&:) (map HasHeader xs)
+  toList = error "Test.Hspec.Wai.Matcher.toList: toList is not supported fo MatchHeaders"
+#endif
+
 data ResponseMatcher = ResponseMatcher {
   matchStatus :: Int
-, matchHeaders :: [Header]
+, matchHeaders :: MatchHeaders
 , matchBody :: Maybe LB.ByteString
 }
 
+data MatchHeaders = AnyHeaders | HasHeader Header | MatchHeaders :&&: MatchHeaders | MatchHeaders :||: MatchHeaders
+
 instance IsString ResponseMatcher where
-  fromString s = ResponseMatcher 200 [] (Just . encodeUtf8 . fromString $ s)
+  fromString s = ResponseMatcher 200 AnyHeaders (Just . encodeUtf8 . fromString $ s)
 
 instance Num ResponseMatcher where
-  fromInteger n = ResponseMatcher (fromInteger n) [] Nothing
+  fromInteger n = ResponseMatcher (fromInteger n) AnyHeaders Nothing
   (+) =    error "ResponseMatcher does not support (+)"
   (-) =    error "ResponseMatcher does not support (-)"
   (*) =    error "ResponseMatcher does not support (*)"
@@ -52,8 +66,8 @@ match (SResponse (Status status _) headers body) (ResponseMatcher expectedStatus
       , "  but got:  " ++ actual
       ]
 
-checkHeaders :: [Header] -> [Header] -> Maybe String
-checkHeaders actual expected = case filter (`notElem` actual) expected of
+checkHeaders :: [Header] -> MatchHeaders -> Maybe String
+checkHeaders actual expected = undefined {- case filter (`notElem` actual) expected of
   [] -> Nothing
   missing ->
     let msg
@@ -62,3 +76,4 @@ checkHeaders actual expected = case filter (`notElem` actual) expected of
     in Just $ unlines (msg : formatHeaders missing ++ "the actual headers were:" : formatHeaders actual)
   where
     formatHeaders = map (("  " ++) . formatHeader)
+    -}

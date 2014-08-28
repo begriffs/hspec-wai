@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings, OverloadedLists #-}
 module Test.Hspec.Wai.MatcherSpec (main, spec) where
 
 import           Test.Hspec.Meta
